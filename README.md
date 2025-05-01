@@ -25,6 +25,11 @@ A WhatsApp bot built with Go and whatsmeow that helps friends split bills easily
    go build -o build/split-billing-bot cmd/main.go
    ```
 
+## Web QR Code UI
+
+- When you start the bot, it also runs a web server at [http://localhost:8080/](http://localhost:8080/).
+- Open this page in your browser to view and scan the WhatsApp QR code for login.
+
 ## Usage
 
 1. Run the application:
@@ -33,8 +38,9 @@ A WhatsApp bot built with Go and whatsmeow that helps friends split bills easily
    ./build/split-billing-bot
    ```
 
-2. Scan the QR code with WhatsApp to log in
-3. The bot will now process commands in your chats
+2. Open your browser and go to [http://localhost:8080/](http://localhost:8080/) to view the QR code.
+3. Scan the QR code with WhatsApp to log in.
+4. The bot will now process commands in your chats.
 
 ## Commands
 
