@@ -54,8 +54,8 @@ A WhatsApp bot built with Go and whatsmeow that helps friends split bills easily
 
 1. `/newbill Sarapan di Restoran Padang`
 2. Each person types `/join` to participate
-3. `/add Nasi Goreng 25.50`
-4. `/add Ayam Goreng 15.75`
+3. `/add Nasi Goreng 25000`
+4. `/add Ayam Goreng 15000`
 5. `/calculate`
 6. `/close` when done
 
