@@ -82,17 +82,34 @@ func (b *Bill) GenerateSummary() string {
 
 	sb.WriteString("*Items:*\n")
 	for _, item := range b.Items {
-		sb.WriteString(fmt.Sprintf("- %s: $%.2f\n", item.Name, item.Amount))
+		sb.WriteString(fmt.Sprintf("- %s: %s\n", item.Name, formatIDR(item.Amount)))
 	}
 
-	sb.WriteString(fmt.Sprintf("\n*Total:* $%.2f\n", b.Total))
+	sb.WriteString(fmt.Sprintf("\n*Total:* %s\n", formatIDR(b.Total)))
 
 	sb.WriteString("\n*Participants:*\n")
 	for _, p := range b.Participants {
 		sb.WriteString(fmt.Sprintf("- %s\n", p))
 	}
 
-	sb.WriteString(fmt.Sprintf("\n*Each person pays:* $%.2f", perPerson))
+	sb.WriteString(fmt.Sprintf("\n*Each person pays:* %s", formatIDR(perPerson)))
 
 	return sb.String()
 }
+
+// formatIDR formats a float64 as Indonesian Rupiah (Rp12.345)
+func formatIDR(amount float64) string {
+	n := int64(amount + 0.5) // round to nearest rupiah
+	s := fmt.Sprintf("%d", n)
+	var out []byte
+	count := 0
+	for i := len(s) - 1; i >= 0; i-- {
+		if count > 0 && count%3 == 0 {
+			out = append([]byte{"."[0]}, out...)
+		}
+		out = append([]byte{s[i]}, out...)
+		count++
+	}
+	return "Rp" + string(out)
+}
+

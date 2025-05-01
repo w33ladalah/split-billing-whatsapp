@@ -64,9 +64,11 @@ const htmlPage = `<!DOCTYPE html>
 		const qrDiv = document.getElementById('qr');
 		qrDiv.innerHTML = '';
 		if (qr) {
-			QRCode.toCanvas(qrDiv, qr, { width: 256 }, function (error) {
+			const canvas = document.createElement('canvas');
+			QRCode.toCanvas(canvas, qr, { width: 256 }, function (error) {
 				if (error) qrDiv.innerText = 'QR error: ' + error;
 			});
+			qrDiv.appendChild(canvas);
 			document.getElementById('text').innerText = '';
 		} else {
 			document.getElementById('text').innerText = 'Waiting for QR code...';
