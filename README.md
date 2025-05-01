@@ -14,20 +14,25 @@ A WhatsApp bot built with Go and whatsmeow that helps friends split bills easily
 1. Ensure you have Go 1.16+ installed
 2. Clone the repository
 3. Install dependencies:
-   ```
+
+   ```shell
    go mod tidy
    ```
+
 4. Build the application:
-   ```
+
+   ```shell
    go build -o build/split-billing-bot cmd/main.go
    ```
 
 ## Usage
 
 1. Run the application:
-   ```
+
+   ```shell
    ./build/split-billing-bot
    ```
+
 2. Scan the QR code with WhatsApp to log in
 3. The bot will now process commands in your chats
 
