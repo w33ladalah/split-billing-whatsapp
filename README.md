@@ -52,10 +52,10 @@ A WhatsApp bot built with Go and whatsmeow that helps friends split bills easily
 
 ## Example
 
-1. `/newbill Dinner at Restaurant`
+1. `/newbill Sarapan di Restoran Padang`
 2. Each person types `/join` to participate
-3. `/add Pizza 25.50`
-4. `/add Drinks 15.75`
+3. `/add Nasi Goreng 25.50`
+4. `/add Ayam Goreng 15.75`
 5. `/calculate`
 6. `/close` when done
 
@@ -66,6 +66,11 @@ A WhatsApp bot built with Go and whatsmeow that helps friends split bills easily
 - [ ] Add support for different languages
 - [ ] Add support for different timezones
 - [ ] Send message to the participants WhatsApp number when bill is closed
+- [ ] When user types `/join`, send message to the user that they have joined the bill
+- [ ] Add bill name to the `/join` command
+- [ ] Add bill name to the `/calculate` command
+- [ ] Add bill name to the `/close` command
+- [ ] Add bill name to the `/help` command
 
 ## License
 
