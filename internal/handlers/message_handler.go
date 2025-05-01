@@ -117,6 +117,35 @@ Contoh penggunaan:
 4. /add Ayam Goreng 15000
 5. /calculate
 6. /close saat selesai
+
+_How to Use WhatsApp Split Bill Bot:_
+
+1. Create a new bill:
+   /newbill Breakfast at Padang Restaurant
+2. Each participant types /join to participate
+3. Add items and amounts:
+   /add Fried Rice 25000
+   /add Fried Chicken 15000
+4. Calculate the split:
+   /calculate
+5. Close the bill when finished:
+   /close
+
+*Command List:*
+/newbill [name] - Create a new bill
+/add [item] [amount] - Add item to the bill
+/join - Join the bill as a participant
+/calculate - Calculate and show the split
+/close - Close the bill
+/help - Show usage instructions and command list
+
+Usage example:
+1. /newbill Breakfast at Padang Restaurant
+2. Everyone types /join
+3. /add Fried Rice 25000
+4. /add Fried Chicken 15000
+5. /calculate
+6. /close when finished
 `
 	h.sendMessage(client, chatID, helpText)
 }
