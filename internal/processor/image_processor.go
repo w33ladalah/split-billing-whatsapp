@@ -18,15 +18,15 @@ import (
 // ImageProcessor handles bill image processing via GPT-4o
 // It sends the image and a system prompt to the OpenAI API and parses the response.
 type ImageProcessor struct {
-	openaiAPIKey  string
-	gpt4oPrompt   string
+	openaiAPIKey string
+	gpt4oPrompt  string
 }
 
 func NewImageProcessor() *ImageProcessor {
 	apiKey := os.Getenv("OPENAI_API_KEY")
 	prompt := os.Getenv("GPT4O_BILL_PROMPT")
 	if prompt == "" {
-		prompt = "You are a bill extraction assistant. Given a photo of a bill/receipt, extract all items with their names and prices, and the total. Return as JSON: {\"items\":[{"name":"string","amount":float}],\"total\":float}."
+		prompt = "You are a bill extraction assistant. Given a photo of a bill/receipt, extract all items with their names and prices, and the total. Return as JSON: {\"items\":[{\"name\":\"string\",\"amount\":float}],\"total\":float}."
 	}
 	return &ImageProcessor{
 		openaiAPIKey: apiKey,
@@ -59,10 +59,10 @@ func (p *ImageProcessor) callGPT4o(imgData []byte) (string, error) {
 	// In a real implementation, use OpenAI's vision API endpoints.
 
 	payload := map[string]interface{}{
-		"model": "gpt-4o",
-		"messages": messages,
+		"model":      "gpt-4o",
+		"messages":   messages,
 		"max_tokens": 512,
-		"tools": []interface{}{},
+		"tools":      []interface{}{},
 		"attachments": []map[string]string{
 			{"type": "image", "data": imgBase64, "mime": "image/jpeg"},
 		},
@@ -89,10 +89,10 @@ func (p *ImageProcessor) callGPT4o(imgData []byte) (string, error) {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		body, _ := ioutil.ReadAll(resp.Body)
+		body, _ := io.ReadAll(resp.Body)
 		return "", fmt.Errorf("OpenAI API error: %s", string(body))
 	}
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", err
 	}
