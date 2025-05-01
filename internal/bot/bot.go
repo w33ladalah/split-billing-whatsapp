@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/w33ladalah/split-billing-whatsapp/internal/handlers"
+	"github.com/w33ladalah/split-billing-whatsapp/internal/web"
 
 	"go.mau.fi/whatsmeow"
 	"go.mau.fi/whatsmeow/store/sqlstore"
@@ -22,6 +23,8 @@ type Bot struct {
 }
 
 func NewBot() (*Bot, error) {
+	// Start QR code web server
+	web.ServeQR(":8080")
 	// Create WhatsApp store
 	dbPath := "./whatsapp-data.db"
 	container, err := sqlstore.New("sqlite3", "file:"+dbPath+"?_foreign_keys=on", waLog.Stdout("Database", "DEBUG", true))
@@ -67,6 +70,7 @@ func (b *Bot) Connect() error {
 				// Print the QR code to the terminal
 				fmt.Println("QR code:", evt.Code)
 				fmt.Println("Scan this QR code with your WhatsApp app to log in")
+				web.SetQRCode(evt.Code)
 			} else {
 				fmt.Println("QR event:", evt.Event)
 			}
