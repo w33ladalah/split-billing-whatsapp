@@ -24,7 +24,7 @@ type Bot struct {
 func NewBot() (*Bot, error) {
 	// Create WhatsApp store
 	dbPath := "./whatsapp-data.db"
-	container, err := sqlstore.New("sqlite3", "file:"+dbPath+"?_foreign_keys=on", waLog.Stdout("Database", "DEBUG"))
+	container, err := sqlstore.New("sqlite3", "file:"+dbPath+"?_foreign_keys=on", waLog.Stdout("Database", "DEBUG", true))
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
@@ -36,7 +36,7 @@ func NewBot() (*Bot, error) {
 	}
 
 	// Create WhatsApp client
-	client := whatsmeow.NewClient(deviceStore, waLog.Stdout("Client", "INFO"))
+	client := whatsmeow.NewClient(deviceStore, waLog.Stdout("Client", "INFO", true))
 
 	// Create message handler
 	handler := handlers.NewMessageHandler()
