@@ -98,10 +98,10 @@ Available commands:
 /help - Show this help message
 
 Example usage:
-1. /newbill Dinner at Restaurant
+1. /newbill Sarapan di Restoran Padang
 2. Each person types /join to participate
-3. /add Pizza 25.50
-4. /add Drinks 15.75
+3. /add Pecel 25.50
+4. /add Ayam Goreng 15.75
 5. /calculate
 6. /close when done
 `
