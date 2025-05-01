@@ -92,15 +92,15 @@ func (h *MessageHandler) sendHelp(client *whatsmeow.Client, chatID types.JID) {
 _Cara Menggunakan Bot Split Bill WhatsApp:_
 
 1. Buat bill baru:
-   `/newbill Sarapan di Restoran Padang`
-2. Setiap peserta ketik `/join` untuk ikut
+   /newbill Sarapan di Restoran Padang
+2. Setiap peserta ketik /join untuk ikut
 3. Tambahkan item dan nominal:
-   `/add Nasi Goreng 25000`
-   `/add Ayam Goreng 15000`
+   /add Nasi Goreng 25000
+   /add Ayam Goreng 15000
 4. Hitung pembagian:
-   `/calculate`
+   /calculate
 5. Tutup bill jika sudah selesai:
-   `/close`
+   /close
 
 *Daftar Perintah:*
 /newbill [nama] - Buat bill baru
