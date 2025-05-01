@@ -7,10 +7,6 @@ split-billing-bot
 *.dylib
 *.test
 
-# Output of build tools
-/dist/
-/build/
-
 # Dependency directories
 vendor/
 
