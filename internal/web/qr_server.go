@@ -10,7 +10,23 @@ import (
 var (
 	qrCode     string
 	qrCodeLock sync.RWMutex
+	paired     bool
+	pairedLock sync.RWMutex
 )
+
+// SetPaired updates the paired status
+func SetPaired(val bool) {
+	pairedLock.Lock()
+	defer pairedLock.Unlock()
+	paired = val
+}
+
+// GetPaired returns the paired status
+func GetPaired() bool {
+	pairedLock.RLock()
+	defer pairedLock.RUnlock()
+	return paired
+}
 
 // SetQRCode updates the current QR code string
 func SetQRCode(code string) {
@@ -30,7 +46,10 @@ func GetQRCode() string {
 func ServeQR(addr string) {
 	http.HandleFunc("/qr", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]string{"qr": GetQRCode()})
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"qr": GetQRCode(),
+			"paired": GetPaired(),
+		})
 	})
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -61,17 +80,23 @@ const htmlPage = `<!DOCTYPE html>
 		const res = await fetch('/qr');
 		const data = await res.json();
 		const qr = data.qr;
+		const paired = data.paired;
 		const qrDiv = document.getElementById('qr');
+		const textDiv = document.getElementById('text');
 		qrDiv.innerHTML = '';
+		if (paired) {
+			textDiv.innerText = '✅ Successfully paired! You can close this window.';
+			return;
+		}
 		if (qr) {
 			const canvas = document.createElement('canvas');
 			QRCode.toCanvas(canvas, qr, { width: 256 }, function (error) {
 				if (error) qrDiv.innerText = 'QR error: ' + error;
 			});
 			qrDiv.appendChild(canvas);
-			document.getElementById('text').innerText = '';
+			textDiv.innerText = '';
 		} else {
-			document.getElementById('text').innerText = 'Waiting for QR code...';
+			textDiv.innerText = 'Waiting for QR code...';
 		}
 	}
 	setInterval(fetchQR, 2000);

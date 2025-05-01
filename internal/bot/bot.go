@@ -71,6 +71,9 @@ func (b *Bot) Connect() error {
 				fmt.Println("QR code:", evt.Code)
 				fmt.Println("Scan this QR code with your WhatsApp app to log in")
 				web.SetQRCode(evt.Code)
+			} else if evt.Event == "success" {
+				fmt.Println("QR event:", evt.Event)
+				web.SetPaired(true)
 			} else {
 				fmt.Println("QR event:", evt.Event)
 			}

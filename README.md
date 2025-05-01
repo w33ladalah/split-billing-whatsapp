@@ -70,7 +70,7 @@ A WhatsApp bot built with Go and whatsmeow that helps friends split bills easily
 - [ ] Add bill name to the `/join` command
 - [ ] Add bill name to the `/calculate` command
 - [ ] Add bill name to the `/close` command
-- [ ] Add bill name to the `/help` command
+- [*] Add bill name to the `/help` command
 
 ## License
 
