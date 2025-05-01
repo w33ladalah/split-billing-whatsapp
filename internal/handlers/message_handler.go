@@ -55,7 +55,7 @@ func (h *MessageHandler) handleCommand(client *whatsmeow.Client, msg *events.Mes
 	command := strings.ToLower(parts[0])
 
 	chatID := msg.Info.Chat
-	chatIDStr := chatID.String()
+	// chatIDStr := chatID.String()
 
 	switch command {
 	case "/help":
@@ -76,7 +76,7 @@ func (h *MessageHandler) handleCommand(client *whatsmeow.Client, msg *events.Mes
 		amount := parts[len(parts)-1]
 		h.addItem(client, chatID, itemName, amount)
 	case "/join":
-		h.joinBill(client, chatID, msg.Info.Sender)
+		h.joinBill(client, chatID, &msg.Info.Sender)
 	case "/calculate":
 		h.calculateBill(client, chatID)
 	case "/close":
