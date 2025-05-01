@@ -1,0 +1,43 @@
+# Binaries
+split-billing-bot
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+
+# Output of build tools
+/dist/
+/build/
+
+# Dependency directories
+vendor/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# IDE/editor settings
+.idea/
+.vscode/
+*.swp
+*.swo
+*.bak
+*.tmp
+
+# Environment files
+.env
+.env.*
+
+# WhatsApp session DB
+whatsapp-data.db
+
+# Go coverage files
+*.out
+
+# Logs
+*.log
+
+# Misc
+*.local
