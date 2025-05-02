@@ -44,20 +44,20 @@ A WhatsApp bot built with Go and whatsmeow that helps friends split bills easily
 ## Commands
 
 - `/newbill [name]` - Create a new bill
-- `/add [bill_name] [item] [amount]` - Add an item to a bill
-- `/join [bill_name]` - Join a bill as a participant
-- `/calculate [bill_name]` - Calculate and show how much each person owes in a bill
-- `/close [bill_name]` - Close a bill
+- `/add [item] [amount]` - Add an item to the current bill
+- `/join` - Join the current bill as a participant
+- `/calculate` - Calculate and show how much each person owes in the current bill
+- `/close` - Close the current bill
 - `/help` - Show available commands
 
 ## Example
 
 1. `/newbill Sarapan`
-2. Each person types `/join Sarapan` to participate
-3. `/add Sarapan Nasi Goreng 25000`
-4. `/add Sarapan Ayam Goreng 15000`
-5. `/calculate Sarapan`
-6. `/close Sarapan` when done
+2. Each person types `/join` to participate
+3. `/add Nasi Goreng 25000`
+4. `/add Ayam Goreng 15000`
+5. `/calculate`
+6. `/close` when done
 
 ## TODO
 

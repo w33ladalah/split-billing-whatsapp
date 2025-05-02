@@ -26,5 +26,5 @@ jobs:
           cd ${{ secrets.SSH_WORKDIR }}
           git pull origin main
           CGO_ENABLED=1 ${{ secrets.SSH_GOPATH }}/bin/go build -o build/bot .
-          sudo -n systemctl restart split-bill-bot.service
+          sudo -n systemctl restart splitbillbot.service
         EOF

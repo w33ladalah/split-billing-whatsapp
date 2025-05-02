@@ -17,13 +17,13 @@ import (
 )
 
 type MessageHandler struct {
-	// ActiveBills[chatID][billName] = *Bill
-	ActiveBills map[string]map[string]*models.Bill
+	// ActiveBill[chatID] = *Bill
+	ActiveBill map[string]*models.Bill
 }
 
 func NewMessageHandler() *MessageHandler {
 	return &MessageHandler{
-		ActiveBills: make(map[string]map[string]*models.Bill),
+		ActiveBill: make(map[string]*models.Bill),
 	}
 }
 
@@ -81,62 +81,40 @@ func (h *MessageHandler) handleCommand(client *whatsmeow.Client, msg *events.Mes
 		}
 
 		if imgData != nil {
-			// Process the image with OpenAI API
 			proc := processor.NewImageProcessor()
 			bill, err := proc.ProcessBillImage(imgData)
 			if err != nil {
 				h.sendMessage(client, chatID, fmt.Sprintf("Failed to process bill image: %v", err))
 				return
 			}
-			// Save the bill and send summary
 			chatIDStr := chatID.String()
-			if h.ActiveBills[chatIDStr] == nil {
-				h.ActiveBills[chatIDStr] = make(map[string]*models.Bill)
-			}
-			if _, exists := h.ActiveBills[chatIDStr][billName]; exists {
-				h.sendMessage(client, chatID, fmt.Sprintf("A bill named '%s' already exists in this chat. Use a different name.", billName))
+			if h.ActiveBill[chatIDStr] != nil {
+				h.sendMessage(client, chatID, "A bill already exists in this chat. Please close it before creating a new one.")
 				return
 			}
 			bill.Name = billName
-			h.ActiveBills[chatIDStr][billName] = bill
+			h.ActiveBill[chatIDStr] = bill
 			summary := fmt.Sprintf("Created new bill from image: *%s*\n", billName)
 			summary += bill.GenerateSummary()
 			h.sendMessage(client, chatID, summary)
-			h.sendMessage(client, chatID, fmt.Sprintf("Everyone who wants to participate, please type /join %s", billName))
+			h.sendMessage(client, chatID, "Everyone who wants to participate, please type /join")
 			return
 		}
-		// No image, fallback to normal create
 		h.createBill(client, chatID, billName)
 	case "/add":
-		if len(parts) < 4 {
-			h.sendMessage(client, chatID, "Please provide bill name, item, and amount. Example: /add Sarapan Nasi_Goreng 25000")
+		if len(parts) < 3 {
+			h.sendMessage(client, chatID, "Please provide item and amount. Example: /add Nasi_Goreng 25000")
 			return
 		}
-		billName := parts[1]
-		itemName := strings.Join(parts[2:len(parts)-1], " ")
+		itemName := strings.Join(parts[1:len(parts)-1], " ")
 		amount := parts[len(parts)-1]
-		h.addItem(client, chatID, billName, itemName, amount)
+		h.addItem(client, chatID, itemName, amount)
 	case "/join":
-		if len(parts) < 2 {
-			h.sendMessage(client, chatID, "Please provide bill name. Example: /join Sarapan")
-			return
-		}
-		billName := parts[1]
-		h.joinBill(client, chatID, billName, &msg.Info.Sender)
+		h.joinBill(client, chatID, &msg.Info.Sender)
 	case "/calculate":
-		if len(parts) < 2 {
-			h.sendMessage(client, chatID, "Please provide bill name. Example: /calculate Sarapan")
-			return
-		}
-		billName := parts[1]
-		h.calculateBill(client, chatID, billName)
+		h.calculateBill(client, chatID)
 	case "/close":
-		if len(parts) < 2 {
-			h.sendMessage(client, chatID, "Please provide bill name. Example: /close Sarapan")
-			return
-		}
-		billName := parts[1]
-		h.closeBill(client, chatID, billName)
+		h.closeBill(client, chatID)
 	default:
 		h.sendMessage(client, chatID, "Unknown command. Type /help for available commands.")
 	}
@@ -180,51 +158,46 @@ Usage example:
 func (h *MessageHandler) createBill(client *whatsmeow.Client, chatID types.JID, name string) {
 	chatIDStr := chatID.String()
 
-	if h.ActiveBills[chatIDStr] == nil {
-		h.ActiveBills[chatIDStr] = make(map[string]*models.Bill)
-	}
-	if _, exists := h.ActiveBills[chatIDStr][name]; exists {
-		h.sendMessage(client, chatID, fmt.Sprintf("A bill named '%s' already exists in this chat. Use a different name.", name))
+	if h.ActiveBill[chatIDStr] != nil {
+		h.sendMessage(client, chatID, "A bill already exists in this chat. Please close it before creating a new one.")
 		return
 	}
 
 	bill := models.NewBill(name)
-	h.ActiveBills[chatIDStr][name] = bill
+	h.ActiveBill[chatIDStr] = bill
 
-	h.sendMessage(client, chatID, fmt.Sprintf("Created new bill: *%s*\nEveryone who wants to participate, please type /join %s", name, name))
+	h.sendMessage(client, chatID, fmt.Sprintf("Created new bill: *%s*\nEveryone who wants to participate, please type /join", name))
 }
 
-func (h *MessageHandler) joinBill(client *whatsmeow.Client, chatID types.JID, billName string, senderJID *types.JID) {
+func (h *MessageHandler) joinBill(client *whatsmeow.Client, chatID types.JID, senderJID *types.JID) {
 	chatIDStr := chatID.String()
-	bills, exists := h.ActiveBills[chatIDStr]
-	if !exists || bills[billName] == nil {
-		h.sendMessage(client, chatID, fmt.Sprintf("No active bill named '%s' in this chat. Create one with /newbill %s first.", billName, billName))
+	bill := h.ActiveBill[chatIDStr]
+	if bill == nil {
+		h.sendMessage(client, chatID, "No active bill in this chat. Create one with /newbill first.")
 		return
 	}
-	bill := bills[billName]
 	name := senderJID.User
 	added := bill.AddParticipant(name)
 	if added {
-		h.sendMessage(client, chatID, fmt.Sprintf("*%s* joined the bill *%s*.", name, billName))
+		h.sendMessage(client, chatID, fmt.Sprintf("*%s* joined the bill *%s*.", name, bill.Name))
 	} else {
-		h.sendMessage(client, chatID, fmt.Sprintf("*%s* is already a participant in bill *%s*.", name, billName))
+		h.sendMessage(client, chatID, fmt.Sprintf("*%s* is already a participant in bill *%s*.", name, bill.Name))
 	}
 }
 
-func (h *MessageHandler) addItem(client *whatsmeow.Client, chatID types.JID, billName, itemName, amountStr string) {
+func (h *MessageHandler) addItem(client *whatsmeow.Client, chatID types.JID, itemName, amountStr string) {
 	chatIDStr := chatID.String()
-	bills, exists := h.ActiveBills[chatIDStr]
-	if !exists || bills[billName] == nil {
-		h.sendMessage(client, chatID, fmt.Sprintf("No active bill named '%s' in this chat. Create one with /newbill %s first.", billName, billName))
+	bill := h.ActiveBill[chatIDStr]
+	if bill == nil {
+		h.sendMessage(client, chatID, "No active bill in this chat. Create one with /newbill first.")
 		return
 	}
-	bill := bills[billName]
 	amount, err := bill.AddItem(itemName, amountStr)
 	if err != nil {
 		h.sendMessage(client, chatID, fmt.Sprintf("Error: %s", err.Error()))
 		return
 	}
-	h.sendMessage(client, chatID, fmt.Sprintf("Added *%s* (%s) to bill *%s*.", itemName, formatIDRLocal(amount), billName))
+	h.sendMessage(client, chatID, fmt.Sprintf("Added *%s* (%s) to bill *%s*.", itemName, formatIDRLocal(amount), bill.Name))
 }
 
 // formatIDRLocal is a local copy of the formatIDR function for Indonesian Rupiah formatting
@@ -244,14 +217,13 @@ func formatIDRLocal(amount float64) string {
 }
 
 
-func (h *MessageHandler) calculateBill(client *whatsmeow.Client, chatID types.JID, billName string) {
+func (h *MessageHandler) calculateBill(client *whatsmeow.Client, chatID types.JID) {
 	chatIDStr := chatID.String()
-	bills, exists := h.ActiveBills[chatIDStr]
-	if !exists || bills[billName] == nil {
-		h.sendMessage(client, chatID, fmt.Sprintf("No active bill named '%s' in this chat. Create one with /newbill %s first.", billName, billName))
+	bill := h.ActiveBill[chatIDStr]
+	if bill == nil {
+		h.sendMessage(client, chatID, "No active bill in this chat. Create one with /newbill first.")
 		return
 	}
-	bill := bills[billName]
 	if len(bill.Participants) == 0 {
 		h.sendMessage(client, chatID, "No participants in the bill. Ask people to join with /join first.")
 		return
@@ -264,21 +236,16 @@ func (h *MessageHandler) calculateBill(client *whatsmeow.Client, chatID types.JI
 	h.sendMessage(client, chatID, summary)
 }
 
-func (h *MessageHandler) closeBill(client *whatsmeow.Client, chatID types.JID, billName string) {
+func (h *MessageHandler) closeBill(client *whatsmeow.Client, chatID types.JID) {
 	chatIDStr := chatID.String()
-	bills, exists := h.ActiveBills[chatIDStr]
-	if !exists || bills[billName] == nil {
-		h.sendMessage(client, chatID, fmt.Sprintf("No active bill named '%s' in this chat.", billName))
+	bill := h.ActiveBill[chatIDStr]
+	if bill == nil {
+		h.sendMessage(client, chatID, "No active bill in this chat.")
 		return
 	}
-	bill := bills[billName]
 	summary := fmt.Sprintf("*Bill Closed: %s*\n\n", bill.Name)
 	summary += bill.GenerateSummary()
-	// Delete the bill
-	delete(bills, billName)
-	if len(bills) == 0 {
-		delete(h.ActiveBills, chatIDStr)
-	}
+	delete(h.ActiveBill, chatIDStr)
 	h.sendMessage(client, chatID, summary)
 	h.sendMessage(client, chatID, "The bill has been closed. Start a new one with /newbill.")
 }
