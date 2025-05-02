@@ -61,15 +61,12 @@ A WhatsApp bot built with Go and whatsmeow that helps friends split bills easily
 
 ## TODO
 
-- [ ] Add image processing for bill images
-- [ ] Add support for different bill types
-- [ ] Add support for different languages
-- [ ] Add support for different timezones
+- [ ] Add image processing for bill images using LLM
 - [ ] Send message to the participants WhatsApp number when bill is closed
 - [ ] When user types `/join`, send message to the user that they have joined the bill
-- [ ] Add bill name to the `/join` command
-- [ ] Add bill name to the `/calculate` command
-- [ ] Add bill name to the `/close` command
+- [x] Add bill name to the `/join` command
+- [x] Add bill name to the `/calculate` command
+- [x] Add bill name to the `/close` command
 - [x] Add bill name to the `/help` command
 - [ ] Change the database server to use PostgreSQL
 - [ ] Use Docker to containerize the application
