@@ -74,6 +74,8 @@ A WhatsApp bot built with Go and whatsmeow that helps friends split bills easily
 - [ ] Change the database server to use PostgreSQL
 - [ ] Use Docker to containerize the application
 - [x] Use GitHub Actions to deploy the application to a VPS
+- [ ] Add unit tests
+- [ ] Add integration tests
 
 ## License
 
