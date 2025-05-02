@@ -25,6 +25,6 @@ jobs:
         ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
           cd /home/rzq/split-bill-bot
           git pull origin main
-          go build -o app .
-          sudo systemctl restart split-bill-bot.service
+          /usr/local/go/bin/go build -o app .
+          sudo -n systemctl restart split-bill-bot.service
         EOF
