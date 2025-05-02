@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/w33ladalah/split-billing-whatsapp/internal/models"
+	"github.com/w33ladalah/split-billing-whatsapp/internal/processor"
 
 	"go.mau.fi/whatsmeow"
 	"go.mau.fi/whatsmeow/types"
@@ -62,10 +63,49 @@ func (h *MessageHandler) handleCommand(client *whatsmeow.Client, msg *events.Mes
 		h.sendHelp(client, chatID)
 	case "/newbill":
 		if len(parts) < 2 {
-			h.sendMessage(client, chatID, "Please provide a bill name. Example: /newbill Sarapan")
+			h.sendMessage(client, chatID, "Please provide a bill name. Example: /newbill Sarapan or send /newbill Sarapan with a bill photo.")
 			return
 		}
 		billName := parts[1]
+
+		// Check for image attachment
+		var imgData []byte
+		if msg.Message.GetImageMessage() != nil {
+			img := msg.Message.GetImageMessage()
+			if img.GetURL() != "" && img.GetDirectPath() != "" {
+				data, err := client.Download(img)
+				if err == nil {
+					imgData = data
+				}
+			}
+		}
+
+		if imgData != nil {
+			// Process the image with OpenAI API
+			proc := processor.NewImageProcessor()
+			bill, err := proc.ProcessBillImage(imgData)
+			if err != nil {
+				h.sendMessage(client, chatID, fmt.Sprintf("Failed to process bill image: %v", err))
+				return
+			}
+			// Save the bill and send summary
+			chatIDStr := chatID.String()
+			if h.ActiveBills[chatIDStr] == nil {
+				h.ActiveBills[chatIDStr] = make(map[string]*models.Bill)
+			}
+			if _, exists := h.ActiveBills[chatIDStr][billName]; exists {
+				h.sendMessage(client, chatID, fmt.Sprintf("A bill named '%s' already exists in this chat. Use a different name.", billName))
+				return
+			}
+			bill.Name = billName
+			h.ActiveBills[chatIDStr][billName] = bill
+			summary := fmt.Sprintf("Created new bill from image: *%s*\n", billName)
+			summary += bill.GenerateSummary()
+			h.sendMessage(client, chatID, summary)
+			h.sendMessage(client, chatID, fmt.Sprintf("Everyone who wants to participate, please type /join %s", billName))
+			return
+		}
+		// No image, fallback to normal create
 		h.createBill(client, chatID, billName)
 	case "/add":
 		if len(parts) < 4 {
