@@ -19,15 +19,70 @@ import (
 type MessageHandler struct {
 	// ActiveBill[chatID] = *Bill
 	ActiveBill map[string]*models.Bill
+	// ExpectingContacts[chatID] = true if waiting for contact attachments
+	ExpectingContacts map[string]bool
 }
 
 func NewMessageHandler() *MessageHandler {
 	return &MessageHandler{
-		ActiveBill: make(map[string]*models.Bill),
+		ActiveBill:        make(map[string]*models.Bill),
+		ExpectingContacts: make(map[string]bool),
 	}
 }
 
 func (h *MessageHandler) HandleMessage(client *whatsmeow.Client, msg *events.Message) {
+	chatIDStr := msg.Info.Chat.String()
+
+	// Handle contact attachment if expecting participants
+	if h.ExpectingContacts[chatIDStr] {
+		bill := h.ActiveBill[chatIDStr]
+		if bill == nil {
+			h.sendMessage(client, msg.Info.Chat, "No active bill in this chat. Create one with /new first.")
+			h.ExpectingContacts[chatIDStr] = false
+			return
+		}
+		// Handle single contact
+		if msg.Message.GetContactMessage() != nil {
+			contact := msg.Message.GetContactMessage()
+			name := contact.GetDisplayName()
+			jid := ""
+			if contact.GetVcard() != "" {
+				jid = extractJIDFromVCard(contact.GetVcard())
+			}
+			added := bill.AddParticipant(name, jid)
+			if added {
+				h.sendMessage(client, msg.Info.Chat, "Added participant: "+name)
+			} else {
+				h.sendMessage(client, msg.Info.Chat, name+" is already a participant.")
+			}
+			h.ExpectingContacts[chatIDStr] = false
+			return
+		}
+		// Handle multiple contacts (contacts array)
+		if msg.Message.GetContactsArrayMessage() != nil {
+			contacts := msg.Message.GetContactsArrayMessage().GetContacts()
+			var addedNames []string
+			for _, c := range contacts {
+				name := c.GetDisplayName()
+				jid := ""
+				if c.GetVcard() != "" {
+					jid = extractJIDFromVCard(c.GetVcard())
+				}
+				added := bill.AddParticipant(name, jid)
+				if added {
+					addedNames = append(addedNames, name)
+				}
+			}
+			if len(addedNames) > 0 {
+				h.sendMessage(client, msg.Info.Chat, "Added participants: "+strings.Join(addedNames, ", "))
+			} else {
+				h.sendMessage(client, msg.Info.Chat, "All contacts are already participants.")
+			}
+			h.ExpectingContacts[chatIDStr] = false
+			return
+		}
+	}
+
 	// Skip messages sent by our bot
 	if msg.Info.IsFromMe {
 		return
@@ -72,9 +127,11 @@ func (h *MessageHandler) handleCommand(client *whatsmeow.Client, msg *events.Mes
 	switch command {
 	case "/help":
 		h.sendHelp(client, chatID)
-	case "/newbill":
+	case "/participant":
+		h.handleParticipantCommand(client, chatID)
+	case "/new":
 		if len(parts) < 2 {
-			h.sendMessage(client, chatID, "Please provide a bill name. Example: /newbill Sarapan or send /newbill Sarapan with a bill photo.")
+			h.sendMessage(client, chatID, "Please provide a bill name. Example: /new Sarapan or send /new Sarapan with a bill photo.")
 			return
 		}
 
@@ -84,16 +141,16 @@ func (h *MessageHandler) handleCommand(client *whatsmeow.Client, msg *events.Mes
 
 		if img != nil {
 			caption := img.GetCaption()
-			if strings.HasPrefix(caption, "/newbill") {
+			if strings.HasPrefix(caption, "/new") {
 				// Extract bill name from caption
-				billName = strings.TrimSpace(strings.TrimPrefix(caption, "/newbill"))
+				billName = strings.TrimSpace(strings.TrimPrefix(caption, "/new"))
 			} else {
 				// Fallback: extract from text (for non-caption usage)
-				billName = strings.TrimSpace(strings.TrimPrefix(text, "/newbill"))
+				billName = strings.TrimSpace(strings.TrimPrefix(text, "/new"))
 			}
 		} else {
 			// No image: extract from text
-			billName = strings.TrimSpace(strings.TrimPrefix(text, "/newbill"))
+			billName = strings.TrimSpace(strings.TrimPrefix(text, "/new"))
 		}
 
 		// Check for image data
@@ -145,14 +202,44 @@ func (h *MessageHandler) handleCommand(client *whatsmeow.Client, msg *events.Mes
 		amount := parts[len(parts)-1]
 		h.addItem(client, chatID, itemName, amount)
 	case "/join":
-		h.joinBill(client, chatID, &msg.Info.Sender)
+		var billName string
+		if len(parts) > 1 {
+			billName = strings.Join(parts[1:], " ")
+		}
+		h.joinBill(client, chatID, &msg.Info.Sender, billName)
 	case "/calculate":
 		h.calculateBill(client, chatID)
 	case "/close":
 		h.closeBill(client, chatID)
+	case "/bill":
+		h.showBillDetails(client, chatID)
 	default:
 		h.sendMessage(client, chatID, "Unknown command. Type /help for available commands.")
 	}
+}
+
+// showBillDetails sends details of the current bill, including participants
+func (h *MessageHandler) showBillDetails(client *whatsmeow.Client, chatID types.JID) {
+	chatIDStr := chatID.String()
+	bill := h.ActiveBill[chatIDStr]
+	if bill == nil {
+		h.sendMessage(client, chatID, "No active bill in this chat. Create one with /new first.")
+		return
+	}
+	var names []string
+	for _, p := range bill.Participants {
+		names = append(names, p.Name)
+	}
+	participants := strings.Join(names, ", ")
+	details := fmt.Sprintf("*Bill Details: %s*\nParticipants: %s\n\n%s", bill.Name, participants, bill.GenerateSummary())
+	h.sendMessage(client, chatID, details)
+}
+
+// handleParticipantCommand responds with instructions for adding participants via contact attachments
+func (h *MessageHandler) handleParticipantCommand(client *whatsmeow.Client, chatID types.JID) {
+	chatIDStr := chatID.String()
+	h.ExpectingContacts[chatIDStr] = true
+	h.sendMessage(client, chatID, "To add participants, please send one or more WhatsApp contact attachments now. The bot will add those contacts as participants to the current bill.")
 }
 
 func (h *MessageHandler) sendHelp(client *whatsmeow.Client, chatID types.JID) {
@@ -161,29 +248,33 @@ func (h *MessageHandler) sendHelp(client *whatsmeow.Client, chatID types.JID) {
 _How to Use WhatsApp Split Bill Bot:_
 
 1. Create a new bill:
-   /newbill Breakfast at Padang Restaurant
-2. Each participant types /join to participate
+	/new <bill_name>
+   _or_
+	/new <bill_name> *with a bill 📷*
+2. Each participant types _/join_ to participate
 3. Add items and amounts:
-   /add Fried Rice 25000
-   /add Fried Chicken 15000
+   /add <item_name> <amount>
+   *You don't need to add items and amounts if you send a bill 📷*
 4. Calculate the split:
    /calculate
 5. Close the bill when finished:
    /close
 
 *Command List:*
-/newbill [name] - Create a new bill
+/new [name] - Create a new bill
 /add [item] [amount] - Add item to the bill
-/join - Join the bill as a participant
+/join [bill_name] - Join the bill as a participant (optionally set/change bill name)
+/participant - Add participants by sending their contact(s)
 /calculate - Calculate and show the split
 /close - Close the bill
+/bill - Show bill details and participant list
 /help - Show usage instructions and command list
 
 Usage example:
-1. /newbill Breakfast at Padang Restaurant
-2. Everyone types /join
-3. /add Fried Rice 25000
-4. /add Fried Chicken 15000
+1. /new <bill_name> with a bill 📷 or /new <bill_name>
+2. Everyone types _/join_
+3. /participant (then send contact attachments to add participants)
+4. /add <item_name> <amount> (don't need to add items and amounts if you send a bill 📷)
 5. /calculate
 6. /close when finished
 `
@@ -204,15 +295,39 @@ func (h *MessageHandler) createBill(client *whatsmeow.Client, chatID types.JID, 
 	h.sendMessage(client, chatID, fmt.Sprintf("Created new bill: *%s*\nEveryone who wants to participate, please type /join", name))
 }
 
-func (h *MessageHandler) joinBill(client *whatsmeow.Client, chatID types.JID, senderJID *types.JID) {
+func extractJIDFromVCard(vcard string) string {
+	// Looks for waid=XXXXXXXXXX in the vCard and returns WhatsApp JID format
+	waidPrefix := "waid="
+	idx := strings.Index(vcard, waidPrefix)
+	if idx == -1 {
+		return ""
+	}
+	start := idx + len(waidPrefix)
+	end := start
+	for end < len(vcard) && ((vcard[end] >= '0' && vcard[end] <= '9') || vcard[end] == '+') {
+		end++
+	}
+	waid := vcard[start:end]
+	if waid != "" {
+		return waid + "@s.whatsapp.net"
+	}
+	return ""
+}
+
+func (h *MessageHandler) joinBill(client *whatsmeow.Client, chatID types.JID, senderJID *types.JID, billName string) {
 	chatIDStr := chatID.String()
 	bill := h.ActiveBill[chatIDStr]
 	if bill == nil {
-		h.sendMessage(client, chatID, "No active bill in this chat. Create one with /newbill first.")
+		h.sendMessage(client, chatID, "No active bill in this chat. Create one with /new first.")
 		return
 	}
+	if billName != "" {
+		bill.Name = billName
+		h.sendMessage(client, chatID, fmt.Sprintf("Bill name set to *%s*.", bill.Name))
+	}
 	name := senderJID.User
-	added := bill.AddParticipant(name)
+	jid := senderJID.User + "@s.whatsapp.net"
+	added := bill.AddParticipant(name, jid)
 	if added {
 		h.sendMessage(client, chatID, fmt.Sprintf("*%s* joined the bill *%s*.", name, bill.Name))
 	} else {
@@ -224,7 +339,7 @@ func (h *MessageHandler) addItem(client *whatsmeow.Client, chatID types.JID, ite
 	chatIDStr := chatID.String()
 	bill := h.ActiveBill[chatIDStr]
 	if bill == nil {
-		h.sendMessage(client, chatID, "No active bill in this chat. Create one with /newbill first.")
+		h.sendMessage(client, chatID, "No active bill in this chat. Create one with /new first.")
 		return
 	}
 	amount, err := bill.AddItem(itemName, amountStr)
@@ -255,7 +370,7 @@ func (h *MessageHandler) calculateBill(client *whatsmeow.Client, chatID types.JI
 	chatIDStr := chatID.String()
 	bill := h.ActiveBill[chatIDStr]
 	if bill == nil {
-		h.sendMessage(client, chatID, "No active bill in this chat. Create one with /newbill first.")
+		h.sendMessage(client, chatID, "No active bill in this chat. Create one with /new first.")
 		return
 	}
 	if len(bill.Participants) == 0 {
@@ -279,9 +394,26 @@ func (h *MessageHandler) closeBill(client *whatsmeow.Client, chatID types.JID) {
 	}
 	summary := fmt.Sprintf("*Bill Closed: %s*\n\n", bill.Name)
 	summary += bill.GenerateSummary()
+
+	// Calculate per person
+	perPerson := 0.0
+	if len(bill.Participants) > 0 {
+		perPerson = bill.Total / float64(len(bill.Participants))
+	}
+
+	// Send private message to each participant
+	for _, p := range bill.Participants {
+		fmt.Println("[DEBUG] Sending private message to:", p.Name)
+		fmt.Println("[DEBUG] Participant JID:", p.JID)
+		if p.JID != "" {
+			personalMsg := fmt.Sprintf("*Bill: %s*\n\n%s\n\n*You need to pay:* %s", bill.Name, bill.GenerateSummary(), formatIDRLocal(perPerson))
+			h.sendMessage(client, types.NewJID(p.JID, ""), personalMsg)
+		}
+	}
+
 	delete(h.ActiveBill, chatIDStr)
 	h.sendMessage(client, chatID, summary)
-	h.sendMessage(client, chatID, "The bill has been closed. Start a new one with /newbill.")
+	h.sendMessage(client, chatID, "The bill has been closed. Start a new one with /new.")
 }
 
 func (h *MessageHandler) sendMessage(client *whatsmeow.Client, chatID types.JID, text string) {

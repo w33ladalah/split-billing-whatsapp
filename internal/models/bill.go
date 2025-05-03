@@ -12,10 +12,15 @@ type BillItem struct {
 	Amount float64
 }
 
+type Participant struct {
+	Name string
+	JID  string
+}
+
 type Bill struct {
 	Name         string
 	Items        []BillItem
-	Participants []string
+	Participants []Participant
 	Total        float64
 }
 
@@ -23,20 +28,19 @@ func NewBill(name string) *Bill {
 	return &Bill{
 		Name:         name,
 		Items:        make([]BillItem, 0),
-		Participants: make([]string, 0),
+		Participants: make([]Participant, 0),
 		Total:        0,
 	}
 }
 
-func (b *Bill) AddParticipant(name string) bool {
-	// Check if participant already exists
+func (b *Bill) AddParticipant(name, jid string) bool {
+	// Check if participant already exists (by JID)
 	for _, p := range b.Participants {
-		if p == name {
+		if p.JID == jid {
 			return false
 		}
 	}
-
-	b.Participants = append(b.Participants, name)
+	b.Participants = append(b.Participants, Participant{Name: name, JID: jid})
 	return true
 }
 
@@ -89,7 +93,7 @@ func (b *Bill) GenerateSummary() string {
 
 	sb.WriteString("\n*Participants:*\n")
 	for _, p := range b.Participants {
-		sb.WriteString(fmt.Sprintf("- %s\n", p))
+		sb.WriteString(fmt.Sprintf("- %s\n", p.Name))
 	}
 
 	sb.WriteString(fmt.Sprintf("\n*Each person pays:* %s", formatIDR(perPerson)))
