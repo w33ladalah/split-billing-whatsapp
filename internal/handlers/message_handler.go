@@ -34,7 +34,7 @@ func (h *MessageHandler) HandleMessage(client *whatsmeow.Client, msg *events.Mes
 	}
 
 	// Get message text
-	if msg.Message.GetConversation() == "" && msg.Message.GetExtendedTextMessage() == nil {
+	if msg.Message.GetConversation() == "" && msg.Message.GetExtendedTextMessage() == nil && msg.Message.GetImageMessage() == nil {
 		return
 	}
 
@@ -49,6 +49,17 @@ func (h *MessageHandler) HandleMessage(client *whatsmeow.Client, msg *events.Mes
 	text = strings.TrimSpace(text)
 	if strings.HasPrefix(text, "/") {
 		h.handleCommand(client, msg, text)
+		return
+	}
+
+	// Handle image message with caption as command
+	img := msg.Message.GetImageMessage()
+	if img != nil {
+		caption := strings.TrimSpace(img.GetCaption())
+		if strings.HasPrefix(caption, "/") {
+			h.handleCommand(client, msg, fmt.Sprintf("%s %s", caption, "with image"))
+			return
+		}
 	}
 }
 
@@ -66,12 +77,36 @@ func (h *MessageHandler) handleCommand(client *whatsmeow.Client, msg *events.Mes
 			h.sendMessage(client, chatID, "Please provide a bill name. Example: /newbill Sarapan or send /newbill Sarapan with a bill photo.")
 			return
 		}
-		billName := parts[1]
 
-		// Check for image attachment
+		// Try to get image message
+		img := msg.Message.GetImageMessage()
+		var billName string
+
+		if img != nil {
+			caption := img.GetCaption()
+			if strings.HasPrefix(caption, "/newbill") {
+				// Extract bill name from caption
+				billName = strings.TrimSpace(strings.TrimPrefix(caption, "/newbill"))
+			} else {
+				// Fallback: extract from text (for non-caption usage)
+				billName = strings.TrimSpace(strings.TrimPrefix(text, "/newbill"))
+			}
+		} else {
+			// No image: extract from text
+			billName = strings.TrimSpace(strings.TrimPrefix(text, "/newbill"))
+		}
+
+		// Check for image data
 		var imgData []byte
-		if msg.Message.GetImageMessage() != nil {
-			img := msg.Message.GetImageMessage()
+		if img != nil {
+			if img.GetURL() != "" && img.GetDirectPath() != "" {
+				data, err := client.Download(img)
+				if err == nil {
+					imgData = data
+				}
+			}
+		}
+		if img != nil {
 			if img.GetURL() != "" && img.GetDirectPath() != "" {
 				data, err := client.Download(img)
 				if err == nil {
@@ -84,7 +119,7 @@ func (h *MessageHandler) handleCommand(client *whatsmeow.Client, msg *events.Mes
 			proc := processor.NewImageProcessor()
 			bill, err := proc.ProcessBillImage(imgData)
 			if err != nil {
-				h.sendMessage(client, chatID, fmt.Sprintf("Failed to process bill image: %v", err))
+				h.sendMessage(client, chatID, "Failed to process bill image: "+err.Error())
 				return
 			}
 			chatIDStr := chatID.String()
@@ -215,7 +250,6 @@ func formatIDRLocal(amount float64) string {
 	}
 	return "Rp" + string(out)
 }
-
 
 func (h *MessageHandler) calculateBill(client *whatsmeow.Client, chatID types.JID) {
 	chatIDStr := chatID.String()
