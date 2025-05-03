@@ -7,10 +7,16 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/joho/godotenv"
 	"github.com/w33ladalah/split-billing-whatsapp/internal/bot"
 )
 
 func main() {
+	// Load environment variables
+	if err := godotenv.Load(); err != nil {
+		fmt.Println("Error loading environment variables:", err)
+	}
+
 	// Create a new bot instance
 	whatsappBot, err := bot.NewBot()
 	if err != nil {
