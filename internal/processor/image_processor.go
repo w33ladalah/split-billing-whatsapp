@@ -100,6 +100,9 @@ func (p *ImageProcessor) callGPT4o(imgData []byte) (string, error) {
 										"price": map[string]any{
 											"type": "number",
 										},
+										"subtotal": map[string]any{
+											"type": "number",
+										},
 									},
 									"required": []string{"name", "price"},
 								},
