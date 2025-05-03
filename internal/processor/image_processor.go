@@ -43,13 +43,13 @@ func NewImageProcessor() *ImageProcessor {
 
 // ProcessBillImage sends the image to GPT-4o and parses the response into a Bill
 func (p *ImageProcessor) ProcessBillImage(imgData []byte) (*models.Bill, error) {
-	jsonResp, err := p.callGPT4o(imgData)
+	jsonResp, err := p.callGPT(imgData)
 	if err != nil {
-		return nil, fmt.Errorf("GPT-4o error: %w", err)
+		return nil, fmt.Errorf("GPT error: %w", err)
 	}
 	if strings.TrimSpace(jsonResp) == "" {
-		fmt.Println("[DEBUG] GPT-4o returned empty response body")
-		return nil, errors.New("GPT-4o returned empty response")
+		fmt.Println("[DEBUG] GPT returned empty response body")
+		return nil, errors.New("GPT returned empty response")
 	}
 	return p.parseBillJSON(jsonResp)
 }
@@ -59,11 +59,12 @@ func (p *ImageProcessor) getMimeType(data []byte) string {
 	return http.DetectContentType(data)
 }
 
-// callGPT4o sends the image and prompt to the OpenAI API and returns the raw JSON string response
-func (p *ImageProcessor) callGPT4o(imgData []byte) (string, error) {
+// callGPT sends the image and prompt to the OpenAI API and returns the raw JSON string response
+func (p *ImageProcessor) callGPT(imgData []byte) (string, error) {
 	if p.openaiAPIKey == "" {
 		return "", errors.New("OPENAI_API_KEY not set in env")
 	}
+
 	url := "https://api.openai.com/v1/chat/completions"
 
 	imgBase64 := encodeToBase64(imgData)
@@ -151,43 +152,62 @@ func (p *ImageProcessor) callGPT4o(imgData []byte) (string, error) {
 		return "", err
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("OpenAI API error: %s", string(body))
-	}
+	// Always read the body and print it for debug
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", err
+	}
+	fmt.Println("[DEBUG] Raw OpenAI API response:")
+	fmt.Println(string(body))
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("OpenAI API error: %s", string(body))
 	}
 	// Parse OpenAI response to extract the assistant's message content
 	var result struct {
 		Choices []struct {
 			Message struct {
-				Content string `json:"content"`
+				Content   string `json:"content"`
+				ToolCalls []struct {
+					Type     string `json:"type"`
+					Function struct {
+						Name      string `json:"name"`
+						Arguments string `json:"arguments"`
+					} `json:"function"`
+				} `json:"tool_calls"`
 			} `json:"message"`
 		} `json:"choices"`
 	}
 	if err := json.Unmarshal(body, &result); err != nil {
 		return "", err
 	}
-	if len(result.Choices) == 0 {
-		return "", errors.New("no choices in OpenAI response")
+
+	if len(result.Choices) > 0 {
+		msg := result.Choices[0].Message
+		if len(msg.ToolCalls) > 0 {
+			// Extract arguments from the first tool call
+			return msg.ToolCalls[0].Function.Arguments, nil
+		}
+		if msg.Content != "" {
+			return msg.Content, nil
+		}
 	}
-	return result.Choices[0].Message.Content, nil
+	return "", errors.New("no content or tool call in response")
 }
 
 // parseBillJSON parses the JSON response into a Bill
 func (p *ImageProcessor) parseBillJSON(jsonStr string) (*models.Bill, error) {
 	if strings.TrimSpace(jsonStr) == "" {
-		fmt.Println("[DEBUG] No content to parse from GPT-4o")
-		return nil, errors.New("no content to parse from GPT-4o")
+		fmt.Println("[DEBUG] No content to parse from GPT")
+		return nil, errors.New("no content to parse from GPT")
 	}
-	fmt.Println("[DEBUG] Raw GPT-4o output:")
+	fmt.Println("[DEBUG] Raw GPT output:")
 	fmt.Println(jsonStr)
 	var parsed struct {
 		Items []struct {
-			Name   string  `json:"name"`
-			Amount float64 `json:"amount"`
+			Name     string  `json:"name"`
+			Price    float64 `json:"price"`
+			Quantity int     `json:"quantity"`
+			Subtotal float64 `json:"subtotal"`
 		} `json:"items"`
 		Total float64 `json:"total"`
 	}
@@ -195,11 +215,11 @@ func (p *ImageProcessor) parseBillJSON(jsonStr string) (*models.Bill, error) {
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(&parsed); err != nil {
 		fmt.Printf("[DEBUG] Failed to parse JSON. Raw content: %s\n", jsonStr)
-		return nil, fmt.Errorf("failed to parse %s JSON: %w", p.openaiModel, err)
+		return nil, fmt.Errorf("failed to parse JSON: %w", err)
 	}
 	bill := models.NewBill("Bill from image")
 	for _, item := range parsed.Items {
-		bill.AddItem(item.Name, fmt.Sprintf("%.2f", item.Amount))
+		bill.AddItem(item.Name, fmt.Sprintf("%.2f", item.Price))
 	}
 	bill.Total = parsed.Total
 	return bill, nil
