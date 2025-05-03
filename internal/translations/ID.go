@@ -25,6 +25,10 @@ var ID = map[string]string{
 	"add_contact_prompt": "Untuk menambahkan peserta, silakan kirim satu atau lebih kontak WhatsApp sekarang. Bot akan menambahkan kontak tersebut sebagai peserta pada tagihan saat ini.",
 	"your_id":            "ID WhatsApp Anda: %s",
 
+	// Private message
+	"private_message":        "Hasil Perhitungan Tagihan: %s\n\n%s\n\nBayar ke: %s",
+	"private_message_failed": "Gagal mengirim pesan pribadi ke %s (%s).",
+
 	// Calculation
 	"calculation_result": "*Hasil Perhitungan Tagihan: %s*\n\n%s\n\nTotal: %s\nJumlah peserta: %d\nBagian per orang: %s",
 	"no_participants":    "Tidak ada peserta dalam tagihan ini. Silakan gunakan /join atau /participant untuk menambahkan peserta.",

@@ -25,6 +25,10 @@ var EN = map[string]string{
 	"add_contact_prompt": "To add participants, please send one or more WhatsApp contact attachments now. The bot will add those contacts as participants to the current bill.",
 	"your_id":            "Your WhatsApp ID: %s",
 
+	// Private message
+	"private_message":        "*Bill Calculation Results: %s*\n\n%s\n\nPay to: %s",
+	"private_message_failed": "Failed to send private message to %s (%s).",
+
 	// Calculation
 	"calculation_result": "*Bill Calculation Results: %s*\n\n%s\n\nTotal: %s\nNumber of participants: %d\nShare per person: %s",
 	"no_participants":    "There are no participants in this bill. Please use /join or /participant to add participants.",
