@@ -37,43 +37,42 @@ var EN = map[string]string{
 	// Help text
 	"help_text": `*Split Bill Bot Help*
 
-_How to Use WhatsApp Split Bill Bot:_
+How to use the WhatsApp Split Bill Bot:
 
 1. Create a new bill:
-	/new <bill_name>
-   *or*
-	/new <bill_name> *with a bill 📷*
-2. Each participant types _/join_ to participate
+   /new <bill_name>
+   or
+   /new <bill_name> with a bill 📷 (send a photo to auto-extract items)
+2. Each participant types /join to participate
 3. Add items and amounts:
    /add <item_name> <amount>
-   *You don't need to add items and amounts if you send a bill 📷*
+   (You can skip this if you send a bill photo)
 4. Calculate the split:
    /calculate
 5. Close the bill when finished:
-   /close
+   /close (each participant will receive a private message with their share)
 
 *Command List:*
 /new [name] - Create a new bill
 /add [item] [amount] - Add item to the bill
 /join [bill_name] - Join the bill as a participant (optionally set/change bill name)
 /participant - Add participants by sending their contact(s)
-/calculate - Calculate and show the split
-/close - Close the bill
+/calculate - Calculate and show how much each person owes
+/close - Close the current bill and send private messages to all participants
 /bill - Show bill details and participant list
-/help - Show usage instructions and command list
+/help - Show this help message
 /myid - Show your WhatsApp ID
 /lang [indonesia|english] - Change bot language preference for this chat
 
-Usage example:
-1. /new <bill_name> with a bill 📷 *or* /new <bill_name>
-2. Everyone types _/join_ or _/participant_ with contact attachments
-3. /add <item_name> <amount> (don't need to add items and amounts if you send a bill 📷)
+Example:
+1. /new <bill_name> with a bill 📷 or /new <bill_name>
+2. Everyone types /join or /participant with contact attachments
+3. /add <item_name> <amount> (skip if you send a bill photo)
 4. /calculate
 5. /close when finished
 
 About:
 Created by Hendro Wibowo (@w33ladalah) and Affandy Fahrizain (@fhrzn)
-
 https://github.com/w33ladalah/split-billing-whatsapp
 `,
 }

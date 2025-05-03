@@ -37,43 +37,42 @@ var ID = map[string]string{
 	// Help text
 	"help_text": `*Bantuan Bot Split Bill*
 
-_Cara Menggunakan WhatsApp Split Bill Bot:_
+Cara menggunakan WhatsApp Split Bill Bot:
 
 1. Buat tagihan baru:
-	/new <nama_tagihan>
-   _atau_
-	/new <nama_tagihan> *dengan foto tagihan 📷*
-2. Setiap peserta ketik _/join_ untuk berpartisipasi
+   /new <nama_tagihan>
+   atau
+   /new <nama_tagihan> dengan foto tagihan 📷 (kirim foto untuk ekstraksi otomatis)
+2. Setiap peserta ketik /join untuk berpartisipasi
 3. Tambahkan item dan jumlah:
    /add <nama_item> <jumlah>
-   *Anda tidak perlu menambahkan item dan jumlah jika Anda mengirim foto tagihan 📷*
+   (Bisa dilewati jika mengirim foto tagihan)
 4. Hitung pembagian:
    /calculate
 5. Tutup tagihan saat selesai:
-   /close
+   /close (setiap peserta akan menerima pesan pribadi dengan bagian tagihannya)
 
 *Daftar Perintah:*
 /new [nama] - Buat tagihan baru
 /add [item] [jumlah] - Tambahkan item ke tagihan
-/join [nama_tagihan] - Bergabung dengan tagihan sebagai peserta (opsional mengatur/mengubah nama tagihan)
-/participant - Tambahkan peserta dengan mengirim kontak mereka
-/calculate - Hitung dan tampilkan pembagian
-/close - Tutup tagihan
+/join [nama_tagihan] - Gabung sebagai peserta (bisa juga untuk mengubah nama tagihan)
+/participant - Tambahkan peserta dengan mengirim kontak
+/calculate - Hitung dan tampilkan pembagian tagihan
+/close - Tutup tagihan dan kirim pesan pribadi ke peserta
 /bill - Tampilkan detail tagihan dan daftar peserta
-/help - Tampilkan petunjuk penggunaan dan daftar perintah
+/help - Tampilkan pesan bantuan ini
 /myid - Tampilkan ID WhatsApp Anda
-/lang [indonesia|english] - Ubah preferensi bahasa bot untuk chat ini
+/lang [indonesia|english] - Ubah bahasa bot untuk chat ini
 
 Contoh penggunaan:
 1. /new <nama_tagihan> dengan foto tagihan 📷 atau /new <nama_tagihan>
-2. Semua orang ketik _/join_ atau _/participant_ dengan lampiran kontak
-3. /add <nama_item> <jumlah> (tidak perlu menambahkan item dan jumlah jika Anda mengirim foto tagihan 📷)
+2. Semua orang ketik /join atau /participant dengan lampiran kontak
+3. /add <nama_item> <jumlah> (bisa dilewati jika mengirim foto tagihan)
 4. /calculate
 5. /close saat selesai
 
 Tentang:
 Dibuat oleh Hendro Wibowo (https://github.com/w33ladalah) dan Affandy Fahrizain (https://github.com/fhrzn)
-
 https://github.com/w33ladalah/split-billing-whatsapp
 `,
 }
