@@ -83,6 +83,7 @@ A WhatsApp bot built with Go and whatsmeow that helps friends split bills easily
 
 - The bot supports English and Indonesian. Use `/lang indonesia` or `/lang english` to switch.
 - To add a new language, edit or add files in `internal/translations/` following the existing structure.
+- It's not perfect, but it works.
 
 ## Contributing
 
