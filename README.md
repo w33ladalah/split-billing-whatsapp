@@ -6,8 +6,11 @@ A WhatsApp bot built with Go and whatsmeow that helps friends split bills easily
 
 - Create and manage bills in WhatsApp groups
 - Add participants and items
-- Send a photo of your bill to extract items and amounts automatically
+- Send a photo of your bill to extract items and amounts automatically (using OpenAI API)
 - Calculate how much each person owes
+- Send private WhatsApp messages to each participant when a bill is closed, showing their share and payment instructions
+- Multi-language support: English and Indonesian (see `/lang` command)
+- Translation system for easy localization
 
 ## Installation
 
@@ -46,10 +49,10 @@ A WhatsApp bot built with Go and whatsmeow that helps friends split bills easily
 
 - `/new [name]` - Create a new bill
 - `/add [item] [amount]` - Add an item to the current bill (optional)
-- Send a photo of your bill to add all items at once (optional)
+- Send a photo of your bill to add all items at once (optional, requires OpenAI API key)
 - `/join [bill_name]` - Join the current bill as a participant (optional)
 - `/calculate` - Calculate and show how much each person owes in the current bill
-- `/close` - Close the current bill
+- `/close` - Close the current bill and send private messages to all participants
 - `/help` - Show available commands
 - `/lang [indonesia|english]` - Change bot language preference for this chat
 
@@ -57,14 +60,14 @@ A WhatsApp bot built with Go and whatsmeow that helps friends split bills easily
 
 1. `/new Sarapan`
 2. Each person types `/join` to participate
-3. Send a photo of your bill to add all items at once
+3. Send a photo of your bill to add all items at once (optional)
 4. `/calculate`
-5. `/close` when done
+5. `/close` when done (each participant receives a private message with their share)
 
 ## TODO
 
-- [ ] Add image processing for bill images using LLM
-- [ ] Send message to the participants WhatsApp number when bill is closed
+- [x] Add image processing for bill images using LLM
+- [x] Send message to the participants WhatsApp number when bill is closed
 - [ ] When user types `/join`, send message to the user that they have joined the bill
 - [x] Add bill name to the `/join` command
 - [x] Add bill name to the `/calculate` command
@@ -75,6 +78,17 @@ A WhatsApp bot built with Go and whatsmeow that helps friends split bills easily
 - [x] Use GitHub Actions to deploy the application to a VPS
 - [ ] Add unit tests
 - [ ] Add integration tests
+
+## Translations
+
+- The bot supports English and Indonesian. Use `/lang indonesia` or `/lang english` to switch.
+- To add a new language, edit or add files in `internal/translations/` following the existing structure.
+
+## Contributing
+
+Pull requests are welcome! For major changes, please open an issue first to discuss what you would like to change.
+
+If you find a bug or have a feature request, please open an issue on GitHub.
 
 ## License
 
