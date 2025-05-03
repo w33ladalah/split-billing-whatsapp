@@ -42,7 +42,7 @@ A WhatsApp bot built with Go and whatsmeow that helps friends split bills easily
 3. Scan the QR code with WhatsApp to log in.
 4. The bot will now process commands in your chats.
 
-## Commands
+### Command List
 
 - `/new [name]` - Create a new bill
 - `/add [item] [amount]` - Add an item to the current bill (optional)
@@ -51,6 +51,7 @@ A WhatsApp bot built with Go and whatsmeow that helps friends split bills easily
 - `/calculate` - Calculate and show how much each person owes in the current bill
 - `/close` - Close the current bill
 - `/help` - Show available commands
+- `/lang [indonesia|english]` - Change bot language preference for this chat
 
 ## Example
 

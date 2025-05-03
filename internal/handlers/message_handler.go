@@ -21,12 +21,15 @@ type MessageHandler struct {
 	ActiveBill map[string]*models.Bill
 	// ExpectingContacts[chatID] = true if waiting for contact attachments
 	ExpectingContacts map[string]bool
+	// LanguagePrefs[chatID] = "indonesia" or "english"
+	LanguagePrefs map[string]string
 }
 
 func NewMessageHandler() *MessageHandler {
 	return &MessageHandler{
 		ActiveBill:        make(map[string]*models.Bill),
 		ExpectingContacts: make(map[string]bool),
+		LanguagePrefs:     make(map[string]string),
 	}
 }
 
@@ -125,9 +128,39 @@ func (h *MessageHandler) handleCommand(client *whatsmeow.Client, msg *events.Mes
 	chatID := msg.Info.Chat
 
 	switch command {
+	case "/lang":
+		lang := ""
+		if len(parts) > 1 {
+			lang = strings.ToLower(parts[1])
+		}
+		chatIDStr := chatID.String()
+		if lang == "indonesia" || lang == "id" {
+			h.LanguagePrefs[chatIDStr] = "indonesia"
+			h.sendMessage(client, chatID, "Bahasa bot telah diubah ke *Indonesia*.")
+		} else if lang == "english" || lang == "en" {
+			h.LanguagePrefs[chatIDStr] = "english"
+			h.sendMessage(client, chatID, "Bot language has been changed to *English*.")
+		} else if lang == "" {
+			current := h.LanguagePrefs[chatIDStr]
+			if current == "" {
+				current = "indonesia"
+			}
+			if current == "english" {
+				h.sendMessage(client, chatID, "Current bot language: *English*. Change with /lang indonesia or /lang english.")
+			} else {
+				h.sendMessage(client, chatID, "Bahasa bot saat ini: *Indonesia*. Ubah dengan /lang indonesia atau /lang english.")
+			}
+		} else {
+			h.sendMessage(client, chatID, "Pilihan bahasa tidak dikenali. Gunakan /lang indonesia atau /lang english.\nUnknown language. Use /lang indonesia or /lang english.")
+		}
+		return
+
+	case "/myid":
+		h.sendMessage(client, chatID, "Your WhatsApp ID: "+msg.Info.Sender.String())
 	case "/help":
 		h.sendHelp(client, chatID)
 	case "/participant":
+
 		h.handleParticipantCommand(client, chatID)
 	case "/new":
 		if len(parts) < 2 {
@@ -189,7 +222,7 @@ func (h *MessageHandler) handleCommand(client *whatsmeow.Client, msg *events.Mes
 			summary := fmt.Sprintf("Created new bill from image: *%s*\n", billName)
 			summary += bill.GenerateSummary()
 			h.sendMessage(client, chatID, summary)
-			h.sendMessage(client, chatID, "Everyone who wants to participate, please type /join")
+			h.sendMessage(client, chatID, "Everyone who wants to participate, please type _/join_ or _/participant_ with contact attachments")
 			return
 		}
 		h.createBill(client, chatID, billName)
@@ -269,14 +302,15 @@ _How to Use WhatsApp Split Bill Bot:_
 /close - Close the bill
 /bill - Show bill details and participant list
 /help - Show usage instructions and command list
+/myid - Show your WhatsApp ID
+/lang [indonesia|english] - Change bot language preference for this chat
 
 Usage example:
 1. /new <bill_name> with a bill 📷 or /new <bill_name>
-2. Everyone types _/join_
-3. /participant (then send contact attachments to add participants)
-4. /add <item_name> <amount> (don't need to add items and amounts if you send a bill 📷)
-5. /calculate
-6. /close when finished
+2. Everyone types _/join_ or _/participant_ with contact attachments
+3. /add <item_name> <amount> (don't need to add items and amounts if you send a bill 📷)
+4. /calculate
+5. /close when finished
 `
 	h.sendMessage(client, chatID, helpText)
 }
@@ -407,13 +441,36 @@ func (h *MessageHandler) closeBill(client *whatsmeow.Client, chatID types.JID) {
 		fmt.Println("[DEBUG] Participant JID:", p.JID)
 		if p.JID != "" {
 			personalMsg := fmt.Sprintf("*Bill: %s*\n\n%s\n\n*You need to pay:* %s", bill.Name, bill.GenerateSummary(), formatIDRLocal(perPerson))
-			h.sendMessage(client, types.NewJID(p.JID, ""), personalMsg)
+			parts := strings.SplitN(p.JID, "@", 2)
+			if len(parts) == 2 {
+				jid := types.NewJID(parts[0], parts[1])
+				fmt.Println("[DEBUG] Participant JID:", jid)
+				fmt.Println("[DEBUG] Chat ID:", chatID)
+				if jid == chatID {
+					h.sendMessage(client, chatID, personalMsg)
+				} else {
+					err := h.sendMessageWithError(client, jid, personalMsg)
+					if err != nil {
+						h.sendMessage(client, chatID, fmt.Sprintf("Failed to send private message to %s (%s). They may need to message the bot first.", p.Name, p.JID))
+					}
+				}
+			}
 		}
 	}
 
 	delete(h.ActiveBill, chatIDStr)
 	h.sendMessage(client, chatID, summary)
 	h.sendMessage(client, chatID, "The bill has been closed. Start a new one with /new.")
+}
+
+func (h *MessageHandler) sendMessageWithError(client *whatsmeow.Client, chatID types.JID, text string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	_, err := client.SendMessage(ctx, chatID, &waProto.Message{
+		Conversation: &text,
+	})
+	return err
 }
 
 func (h *MessageHandler) sendMessage(client *whatsmeow.Client, chatID types.JID, text string) {
