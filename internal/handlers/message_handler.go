@@ -8,6 +8,7 @@ import (
 
 	"github.com/w33ladalah/split-billing-whatsapp/internal/models"
 	"github.com/w33ladalah/split-billing-whatsapp/internal/processor"
+	"github.com/w33ladalah/split-billing-whatsapp/internal/translations"
 
 	"go.mau.fi/whatsmeow"
 	"go.mau.fi/whatsmeow/types"
@@ -33,6 +34,15 @@ func NewMessageHandler() *MessageHandler {
 	}
 }
 
+// getTranslations returns the translation map for the given chatID/user preference
+func (h *MessageHandler) getTranslations(chatID string) map[string]string {
+	lang := h.LanguagePrefs[chatID]
+	if lang == "english" {
+		return translations.EN
+	}
+	return translations.ID // default
+}
+
 func (h *MessageHandler) HandleMessage(client *whatsmeow.Client, msg *events.Message) {
 	chatIDStr := msg.Info.Chat.String()
 
@@ -40,7 +50,8 @@ func (h *MessageHandler) HandleMessage(client *whatsmeow.Client, msg *events.Mes
 	if h.ExpectingContacts[chatIDStr] {
 		bill := h.ActiveBill[chatIDStr]
 		if bill == nil {
-			h.sendMessage(client, msg.Info.Chat, "No active bill in this chat. Create one with /new first.")
+			tr := h.getTranslations(chatIDStr)
+			h.sendMessage(client, msg.Info.Chat, tr["no_bill"])
 			h.ExpectingContacts[chatIDStr] = false
 			return
 		}
@@ -54,9 +65,11 @@ func (h *MessageHandler) HandleMessage(client *whatsmeow.Client, msg *events.Mes
 			}
 			added := bill.AddParticipant(name, jid)
 			if added {
-				h.sendMessage(client, msg.Info.Chat, "Added participant: "+name)
+				tr := h.getTranslations(chatIDStr)
+				h.sendMessage(client, msg.Info.Chat, fmt.Sprintf(tr["user_joined"], name, bill.Name))
 			} else {
-				h.sendMessage(client, msg.Info.Chat, name+" is already a participant.")
+				tr := h.getTranslations(chatIDStr)
+				h.sendMessage(client, msg.Info.Chat, fmt.Sprintf(tr["user_already_joined"], name, bill.Name))
 			}
 			h.ExpectingContacts[chatIDStr] = false
 			return
@@ -126,6 +139,8 @@ func (h *MessageHandler) handleCommand(client *whatsmeow.Client, msg *events.Mes
 	command := strings.ToLower(parts[0])
 
 	chatID := msg.Info.Chat
+	chatIDStr := chatID.String()
+	tr := h.getTranslations(chatIDStr)
 
 	switch command {
 	case "/lang":
@@ -133,38 +148,34 @@ func (h *MessageHandler) handleCommand(client *whatsmeow.Client, msg *events.Mes
 		if len(parts) > 1 {
 			lang = strings.ToLower(parts[1])
 		}
-		chatIDStr := chatID.String()
 		if lang == "indonesia" || lang == "id" {
 			h.LanguagePrefs[chatIDStr] = "indonesia"
-			h.sendMessage(client, chatID, "Bahasa bot telah diubah ke *Indonesia*.")
+			h.sendMessage(client, chatID, tr["language_changed"])
 		} else if lang == "english" || lang == "en" {
 			h.LanguagePrefs[chatIDStr] = "english"
-			h.sendMessage(client, chatID, "Bot language has been changed to *English*.")
+			tr = h.getTranslations(chatIDStr) // update after change
+			h.sendMessage(client, chatID, tr["language_changed"])
 		} else if lang == "" {
 			current := h.LanguagePrefs[chatIDStr]
 			if current == "" {
 				current = "indonesia"
 			}
-			if current == "english" {
-				h.sendMessage(client, chatID, "Current bot language: *English*. Change with /lang indonesia or /lang english.")
-			} else {
-				h.sendMessage(client, chatID, "Bahasa bot saat ini: *Indonesia*. Ubah dengan /lang indonesia atau /lang english.")
-			}
+			tr = h.getTranslations(chatIDStr)
+			h.sendMessage(client, chatID, tr["current_language"])
 		} else {
-			h.sendMessage(client, chatID, "Pilihan bahasa tidak dikenali. Gunakan /lang indonesia atau /lang english.\nUnknown language. Use /lang indonesia or /lang english.")
+			h.sendMessage(client, chatID, tr["unknown_language"])
 		}
 		return
 
 	case "/myid":
-		h.sendMessage(client, chatID, "Your WhatsApp ID: "+msg.Info.Sender.String())
+		h.sendMessage(client, chatID, fmt.Sprintf(tr["your_id"], msg.Info.Sender.String()))
 	case "/help":
-		h.sendHelp(client, chatID)
+		h.sendMessage(client, chatID, tr["help_text"])
 	case "/participant":
-
 		h.handleParticipantCommand(client, chatID)
 	case "/new":
 		if len(parts) < 2 {
-			h.sendMessage(client, chatID, "Please provide a bill name. Example: /new Sarapan or send /new Sarapan with a bill photo.")
+			h.sendMessage(client, chatID, tr["new_bill_usage"])
 			return
 		}
 
@@ -244,89 +255,32 @@ func (h *MessageHandler) handleCommand(client *whatsmeow.Client, msg *events.Mes
 		h.calculateBill(client, chatID)
 	case "/close":
 		h.closeBill(client, chatID)
-	case "/bill":
-		h.showBillDetails(client, chatID)
 	default:
 		h.sendMessage(client, chatID, "Unknown command. Type /help for available commands.")
 	}
 }
 
-// showBillDetails sends details of the current bill, including participants
-func (h *MessageHandler) showBillDetails(client *whatsmeow.Client, chatID types.JID) {
-	chatIDStr := chatID.String()
-	bill := h.ActiveBill[chatIDStr]
-	if bill == nil {
-		h.sendMessage(client, chatID, "No active bill in this chat. Create one with /new first.")
-		return
-	}
-	var names []string
-	for _, p := range bill.Participants {
-		names = append(names, p.Name)
-	}
-	participants := strings.Join(names, ", ")
-	details := fmt.Sprintf("*Bill Details: %s*\nParticipants: %s\n\n%s", bill.Name, participants, bill.GenerateSummary())
-	h.sendMessage(client, chatID, details)
-}
-
 // handleParticipantCommand responds with instructions for adding participants via contact attachments
 func (h *MessageHandler) handleParticipantCommand(client *whatsmeow.Client, chatID types.JID) {
 	chatIDStr := chatID.String()
+	tr := h.getTranslations(chatIDStr)
 	h.ExpectingContacts[chatIDStr] = true
-	h.sendMessage(client, chatID, "To add participants, please send one or more WhatsApp contact attachments now. The bot will add those contacts as participants to the current bill.")
-}
-
-func (h *MessageHandler) sendHelp(client *whatsmeow.Client, chatID types.JID) {
-	helpText := `*Split Billing Bot Help*
-
-_How to Use WhatsApp Split Bill Bot:_
-
-1. Create a new bill:
-	/new <bill_name>
-   _or_
-	/new <bill_name> *with a bill 📷*
-2. Each participant types _/join_ to participate
-3. Add items and amounts:
-   /add <item_name> <amount>
-   *You don't need to add items and amounts if you send a bill 📷*
-4. Calculate the split:
-   /calculate
-5. Close the bill when finished:
-   /close
-
-*Command List:*
-/new [name] - Create a new bill
-/add [item] [amount] - Add item to the bill
-/join [bill_name] - Join the bill as a participant (optionally set/change bill name)
-/participant - Add participants by sending their contact(s)
-/calculate - Calculate and show the split
-/close - Close the bill
-/bill - Show bill details and participant list
-/help - Show usage instructions and command list
-/myid - Show your WhatsApp ID
-/lang [indonesia|english] - Change bot language preference for this chat
-
-Usage example:
-1. /new <bill_name> with a bill 📷 or /new <bill_name>
-2. Everyone types _/join_ or _/participant_ with contact attachments
-3. /add <item_name> <amount> (don't need to add items and amounts if you send a bill 📷)
-4. /calculate
-5. /close when finished
-`
-	h.sendMessage(client, chatID, helpText)
+	h.sendMessage(client, chatID, tr["add_contact_prompt"])
 }
 
 func (h *MessageHandler) createBill(client *whatsmeow.Client, chatID types.JID, name string) {
 	chatIDStr := chatID.String()
+	tr := h.getTranslations(chatIDStr)
 
 	if h.ActiveBill[chatIDStr] != nil {
-		h.sendMessage(client, chatID, "A bill already exists in this chat. Please close it before creating a new one.")
+		h.sendMessage(client, chatID, tr["bill_exists"])
 		return
 	}
 
 	bill := models.NewBill(name)
 	h.ActiveBill[chatIDStr] = bill
 
-	h.sendMessage(client, chatID, fmt.Sprintf("Created new bill: *%s*\nEveryone who wants to participate, please type /join", name))
+	h.sendMessage(client, chatID, fmt.Sprintf(tr["bill_created"], name))
 }
 
 func extractJIDFromVCard(vcard string) string {
@@ -350,38 +304,40 @@ func extractJIDFromVCard(vcard string) string {
 
 func (h *MessageHandler) joinBill(client *whatsmeow.Client, chatID types.JID, senderJID *types.JID, billName string) {
 	chatIDStr := chatID.String()
+	tr := h.getTranslations(chatIDStr)
 	bill := h.ActiveBill[chatIDStr]
 	if bill == nil {
-		h.sendMessage(client, chatID, "No active bill in this chat. Create one with /new first.")
+		h.sendMessage(client, chatID, tr["no_bill"])
 		return
 	}
 	if billName != "" {
 		bill.Name = billName
-		h.sendMessage(client, chatID, fmt.Sprintf("Bill name set to *%s*.", bill.Name))
+		h.sendMessage(client, chatID, fmt.Sprintf(tr["bill_name_set"], bill.Name))
 	}
 	name := senderJID.User
 	jid := senderJID.User + "@s.whatsapp.net"
 	added := bill.AddParticipant(name, jid)
 	if added {
-		h.sendMessage(client, chatID, fmt.Sprintf("*%s* joined the bill *%s*.", name, bill.Name))
+		h.sendMessage(client, chatID, fmt.Sprintf(tr["user_joined"], name, bill.Name))
 	} else {
-		h.sendMessage(client, chatID, fmt.Sprintf("*%s* is already a participant in bill *%s*.", name, bill.Name))
+		h.sendMessage(client, chatID, fmt.Sprintf(tr["user_already_joined"], name, bill.Name))
 	}
 }
 
 func (h *MessageHandler) addItem(client *whatsmeow.Client, chatID types.JID, itemName, amountStr string) {
 	chatIDStr := chatID.String()
+	tr := h.getTranslations(chatIDStr)
 	bill := h.ActiveBill[chatIDStr]
 	if bill == nil {
-		h.sendMessage(client, chatID, "No active bill in this chat. Create one with /new first.")
+		h.sendMessage(client, chatID, tr["no_bill"])
 		return
 	}
 	amount, err := bill.AddItem(itemName, amountStr)
 	if err != nil {
-		h.sendMessage(client, chatID, fmt.Sprintf("Error: %s", err.Error()))
+		h.sendMessage(client, chatID, tr["invalid_amount"])
 		return
 	}
-	h.sendMessage(client, chatID, fmt.Sprintf("Added *%s* (%s) to bill *%s*.", itemName, formatIDRLocal(amount), bill.Name))
+	h.sendMessage(client, chatID, fmt.Sprintf(tr["item_added"], itemName, formatIDRLocal(amount), bill.Name))
 }
 
 // formatIDRLocal is a local copy of the formatIDR function for Indonesian Rupiah formatting
@@ -402,28 +358,31 @@ func formatIDRLocal(amount float64) string {
 
 func (h *MessageHandler) calculateBill(client *whatsmeow.Client, chatID types.JID) {
 	chatIDStr := chatID.String()
+	tr := h.getTranslations(chatIDStr)
 	bill := h.ActiveBill[chatIDStr]
 	if bill == nil {
-		h.sendMessage(client, chatID, "No active bill in this chat. Create one with /new first.")
+		h.sendMessage(client, chatID, tr["no_bill"])
 		return
 	}
 	if len(bill.Participants) == 0 {
-		h.sendMessage(client, chatID, "No participants in the bill. Ask people to join with /join first.")
+		h.sendMessage(client, chatID, tr["no_participants"])
 		return
 	}
 	if len(bill.Items) == 0 {
-		h.sendMessage(client, chatID, "No items in the bill. Add items with /add first.")
+		h.sendMessage(client, chatID, tr["no_items"])
 		return
 	}
+	// You may want to localize the summary format as well, but for now just send the raw summary
 	summary := bill.GenerateSummary()
-	h.sendMessage(client, chatID, summary)
+	h.sendMessage(client, chatID, fmt.Sprintf(tr["bill_summary"], summary))
 }
 
 func (h *MessageHandler) closeBill(client *whatsmeow.Client, chatID types.JID) {
 	chatIDStr := chatID.String()
+	tr := h.getTranslations(chatIDStr)
 	bill := h.ActiveBill[chatIDStr]
 	if bill == nil {
-		h.sendMessage(client, chatID, "No active bill in this chat.")
+		h.sendMessage(client, chatID, tr["no_bill"])
 		return
 	}
 	summary := fmt.Sprintf("*Bill Closed: %s*\n\n", bill.Name)
@@ -438,29 +397,21 @@ func (h *MessageHandler) closeBill(client *whatsmeow.Client, chatID types.JID) {
 	// Send private message to each participant
 	for _, p := range bill.Participants {
 		fmt.Println("[DEBUG] Sending private message to:", p.Name)
-		fmt.Println("[DEBUG] Participant JID:", p.JID)
-		if p.JID != "" {
-			personalMsg := fmt.Sprintf("*Bill: %s*\n\n%s\n\n*You need to pay:* %s", bill.Name, bill.GenerateSummary(), formatIDRLocal(perPerson))
-			parts := strings.SplitN(p.JID, "@", 2)
-			if len(parts) == 2 {
-				jid := types.NewJID(parts[0], parts[1])
-				fmt.Println("[DEBUG] Participant JID:", jid)
-				fmt.Println("[DEBUG] Chat ID:", chatID)
-				if jid == chatID {
-					h.sendMessage(client, chatID, personalMsg)
-				} else {
-					err := h.sendMessageWithError(client, jid, personalMsg)
-					if err != nil {
-						h.sendMessage(client, chatID, fmt.Sprintf("Failed to send private message to %s (%s). They may need to message the bot first.", p.Name, p.JID))
-					}
-				}
+		jid := types.NewJID(p.JID, "s.whatsapp.net")
+		personalMsg := fmt.Sprintf(tr["private_message"], p.Name, perPerson) // TODO: Localize this message if desired
+		if jid == chatID {
+			h.sendMessage(client, chatID, personalMsg)
+		} else {
+			err := h.sendMessageWithError(client, jid, personalMsg)
+			if err != nil {
+				h.sendMessage(client, chatID, fmt.Sprintf(tr["private_message_failed"], p.Name, p.JID))
 			}
 		}
 	}
 
 	delete(h.ActiveBill, chatIDStr)
 	h.sendMessage(client, chatID, summary)
-	h.sendMessage(client, chatID, "The bill has been closed. Start a new one with /new.")
+	h.sendMessage(client, chatID, fmt.Sprintf(tr["bill_closed"], bill.Name))
 }
 
 func (h *MessageHandler) sendMessageWithError(client *whatsmeow.Client, chatID types.JID, text string) error {
