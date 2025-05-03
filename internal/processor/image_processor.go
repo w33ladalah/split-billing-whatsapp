@@ -54,6 +54,11 @@ func (p *ImageProcessor) ProcessBillImage(imgData []byte) (*models.Bill, error) 
 	return p.parseBillJSON(jsonResp)
 }
 
+// getMimeType returns the MIME type of the image data
+func (p *ImageProcessor) getMimeType(data []byte) string {
+	return http.DetectContentType(data)
+}
+
 // callGPT4o sends the image and prompt to the OpenAI API and returns the raw JSON string response
 func (p *ImageProcessor) callGPT4o(imgData []byte) (string, error) {
 	if p.openaiAPIKey == "" {
@@ -68,7 +73,7 @@ func (p *ImageProcessor) callGPT4o(imgData []byte) (string, error) {
 			"role": "user",
 			"content": []any{
 				map[string]any{"type": "text", "text": "[image attached]"},
-				map[string]any{"type": "image_url", "image_url": map[string]any{"url": "data:image/jpeg;base64," + imgBase64}},
+				map[string]any{"type": "image_url", "image_url": map[string]any{"url": "data:" + p.getMimeType(imgData) + ";base64," + imgBase64}},
 			},
 		},
 	}
