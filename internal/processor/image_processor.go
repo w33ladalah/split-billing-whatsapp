@@ -9,10 +9,10 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
+	"github.com/w33ladalah/split-billing-whatsapp/internal/config"
 	"github.com/w33ladalah/split-billing-whatsapp/internal/models"
 )
 
@@ -25,9 +25,9 @@ type ImageProcessor struct {
 }
 
 func NewImageProcessor() *ImageProcessor {
-	apiKey := os.Getenv("OPENAI_API_KEY")
-	prompt := os.Getenv("GPT4O_BILL_PROMPT")
-	model := os.Getenv("OPENAI_MODEL")
+	apiKey := config.GetOpenaiAPIKey()
+	prompt := config.GetGptBillPrompt()
+	model := config.GetOpenaiModel()
 	if model == "" {
 		model = "gpt-4o-mini"
 	}
@@ -62,7 +62,7 @@ func (p *ImageProcessor) getMimeType(data []byte) string {
 // callGPT sends the image and prompt to the OpenAI API and returns the raw JSON string response
 func (p *ImageProcessor) callGPT(imgData []byte) (string, error) {
 	if p.openaiAPIKey == "" {
-		return "", errors.New("OPENAI_API_KEY not set in env")
+		return "", errors.New("OpenAI API key not set")
 	}
 
 	url := "https://api.openai.com/v1/chat/completions"
