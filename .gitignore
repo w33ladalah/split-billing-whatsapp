@@ -38,3 +38,6 @@ whatsapp-data.db
 
 # Misc
 *.local
+
+# Split Billing WhatsApp
+split-billing-whatsapp

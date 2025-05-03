@@ -206,7 +206,7 @@ func (p *ImageProcessor) parseBillJSON(jsonStr string) (*models.Bill, error) {
 		Items []struct {
 			Name     string  `json:"name"`
 			Price    float64 `json:"price"`
-			Quantity int     `json:"quantity"`
+			Quantity float64 `json:"quantity"`
 			Subtotal float64 `json:"subtotal"`
 		} `json:"items"`
 		Total float64 `json:"total"`
@@ -219,7 +219,7 @@ func (p *ImageProcessor) parseBillJSON(jsonStr string) (*models.Bill, error) {
 	}
 	bill := models.NewBill("Bill from image")
 	for _, item := range parsed.Items {
-		bill.AddItem(item.Name, fmt.Sprintf("%.2f", item.Price))
+		bill.AddItem(item.Name, fmt.Sprintf("%.2f", item.Price*item.Quantity))
 	}
 	bill.Total = parsed.Total
 	return bill, nil

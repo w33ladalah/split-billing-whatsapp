@@ -26,6 +26,20 @@ jobs:
           cd ${{ secrets.SSH_WORKDIR }}
           git pull origin main
           source ~/.bashrc
-          CGO_ENABLED=1 ${{ secrets.SSH_GOPATH }}/bin/go build -o build/bot .
+          # Export variables from .env
+          set -a
+          [ -f .env ] && . .env
+          set +a
+          # Build ldflags from .env
+          LDFLAGS=""
+          while IFS='=' read -r key value; do
+            # Skip comments and empty lines
+            if [[ ! "$key" =~ ^# && -n "$key" && -n "$value" ]]; then
+              # Adjust the package path below to match your Go variable package
+              LDFLAGS="$LDFLAGS -X 'github.com/w33ladalah/split-billing-whatsapp/internal/config.${key}=${value}'"
+            fi
+          done < <(grep -v '^#' .env | grep '=')
+          # Build with ldflags
+          CGO_ENABLED=1 ${{ secrets.SSH_GOPATH }}/bin/go build -ldflags="$LDFLAGS" -o build/bot .
           sudo -n systemctl restart splitbillbot.service
         EOF
