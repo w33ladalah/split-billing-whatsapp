@@ -372,9 +372,8 @@ func (h *MessageHandler) calculateBill(client *whatsmeow.Client, chatID types.JI
 		h.sendMessage(client, chatID, tr["no_items"])
 		return
 	}
-	// You may want to localize the summary format as well, but for now just send the raw summary
 	summary := bill.GenerateSummary()
-	h.sendMessage(client, chatID, fmt.Sprintf(tr["bill_summary"], summary))
+	h.sendMessage(client, chatID, summary)
 }
 
 func (h *MessageHandler) closeBill(client *whatsmeow.Client, chatID types.JID) {
@@ -385,20 +384,18 @@ func (h *MessageHandler) closeBill(client *whatsmeow.Client, chatID types.JID) {
 		h.sendMessage(client, chatID, tr["no_bill"])
 		return
 	}
-	summary := fmt.Sprintf("*Bill Closed: %s*\n\n", bill.Name)
+	summary := "*BILL CLOSED*\n\n"
 	summary += bill.GenerateSummary()
-
-	// Calculate per person
-	perPerson := 0.0
-	if len(bill.Participants) > 0 {
-		perPerson = bill.Total / float64(len(bill.Participants))
-	}
 
 	// Send private message to each participant
 	for _, p := range bill.Participants {
 		fmt.Println("[DEBUG] Sending private message to:", p.Name)
-		jid := types.NewJID(p.JID, "s.whatsapp.net")
-		personalMsg := fmt.Sprintf(tr["private_message"], p.Name, perPerson) // TODO: Localize this message if desired
+		partsJID := strings.Split(p.JID, "@")
+		jid := types.NewJID(partsJID[0], "s.whatsapp.net")
+		fmt.Println("[DEBUG] JID:", jid)
+		receiver := p.JID[:strings.Index(p.JID, "@")]
+		personalMsg := fmt.Sprintf(tr["private_message"], bill.Name, summary, types.NewJID(receiver, "s.whatsapp.net").User)
+		fmt.Println("[DEBUG] Personal message:", personalMsg)
 		if jid == chatID {
 			h.sendMessage(client, chatID, personalMsg)
 		} else {
