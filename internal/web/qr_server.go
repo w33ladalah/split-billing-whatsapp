@@ -14,52 +14,6 @@ var (
 	pairedLock sync.RWMutex
 )
 
-// SetPaired updates the paired status
-func SetPaired(val bool) {
-	pairedLock.Lock()
-	defer pairedLock.Unlock()
-	paired = val
-}
-
-// GetPaired returns the paired status
-func GetPaired() bool {
-	pairedLock.RLock()
-	defer pairedLock.RUnlock()
-	return paired
-}
-
-// SetQRCode updates the current QR code string
-func SetQRCode(code string) {
-	qrCodeLock.Lock()
-	defer qrCodeLock.Unlock()
-	qrCode = code
-}
-
-// GetQRCode returns the current QR code string
-func GetQRCode() string {
-	qrCodeLock.RLock()
-	defer qrCodeLock.RUnlock()
-	return qrCode
-}
-
-// ServeQR starts an HTTP server for QR code display
-func ServeQR(addr string) {
-	http.HandleFunc("/qr", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"qr": GetQRCode(),
-			"paired": GetPaired(),
-		})
-	})
-
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		tmpl := template.Must(template.New("qr").Parse(htmlPage))
-		_ = tmpl.Execute(w, nil)
-	})
-
-	go http.ListenAndServe(addr, nil)
-}
-
 const htmlPage = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -104,3 +58,49 @@ const htmlPage = `<!DOCTYPE html>
 	</script>
 </body>
 </html>`
+
+// SetPaired updates the paired status
+func SetPaired(val bool) {
+	pairedLock.Lock()
+	defer pairedLock.Unlock()
+	paired = val
+}
+
+// GetPaired returns the paired status
+func GetPaired() bool {
+	pairedLock.RLock()
+	defer pairedLock.RUnlock()
+	return paired
+}
+
+// SetQRCode updates the current QR code string
+func SetQRCode(code string) {
+	qrCodeLock.Lock()
+	defer qrCodeLock.Unlock()
+	qrCode = code
+}
+
+// GetQRCode returns the current QR code string
+func GetQRCode() string {
+	qrCodeLock.RLock()
+	defer qrCodeLock.RUnlock()
+	return qrCode
+}
+
+// ServeQR starts an HTTP server for QR code display
+func ServeQR(addr string) {
+	http.HandleFunc("/qr", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"qr":     GetQRCode(),
+			"paired": GetPaired(),
+		})
+	})
+
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		tmpl := template.Must(template.New("qr").Parse(htmlPage))
+		_ = tmpl.Execute(w, nil)
+	})
+
+	go http.ListenAndServe(addr, nil)
+}

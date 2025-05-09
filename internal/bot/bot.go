@@ -8,12 +8,13 @@ import (
 	"github.com/w33ladalah/split-billing-whatsapp/internal/handlers"
 	"github.com/w33ladalah/split-billing-whatsapp/internal/web"
 
+	_ "github.com/mattn/go-sqlite3"
 	"go.mau.fi/whatsmeow"
+	"go.mau.fi/whatsmeow/store"
 	"go.mau.fi/whatsmeow/store/sqlstore"
 	"go.mau.fi/whatsmeow/types/events"
 	waLog "go.mau.fi/whatsmeow/util/log"
-
-	_ "github.com/mattn/go-sqlite3"
+	"google.golang.org/protobuf/proto"
 )
 
 type Bot struct {
@@ -31,6 +32,8 @@ func NewBot() (*Bot, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
+
+	store.DeviceProps.Os = proto.String("SplitBilling")
 
 	// Get device store
 	deviceStore, err := container.GetFirstDevice()
